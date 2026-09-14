@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ChefHat, Chrome as Home, Utensils, Search, ShoppingCart, CalendarPlus, User, Clock, MapPin, Phone, Package, CircleCheck as CheckCircle2, X, Plus, Minus, Trash2, ArrowRight, Bike, Info, CreditCard, Wallet, Smartphone, Navigation, Loader as Loader2, LocateFixed, Banknote } from 'lucide-react';
+import { ChefHat, Chrome as Home, Utensils, Search, ShoppingCart, CalendarPlus, User, Clock, MapPin, Phone, Package, CircleCheck as CheckCircle2, X, Plus, Minus, Trash2, ArrowRight, Bike, Info, CreditCard, Wallet, Smartphone, Navigation, Loader as Loader2, LocateFixed, Banknote, Printer } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useDailyMenu, useDishes, createOrder, fetchOrderByNumber, createReservation } from '@/lib/hooks';
 import {
@@ -1117,6 +1117,54 @@ function TrackingPage() {
     : ['en_attente', 'en_preparation', 'pret', 'recupere'];
   const currentStep = order ? statusSteps.indexOf(order.status) : -1;
 
+  const printReceipt = () => {
+    if (!order) return;
+    const win = window.open('', '_blank', 'width=400,height=600');
+    if (!win) return;
+    const items = order.order_items || [];
+    const dateStr = new Date(order.created_at).toLocaleString('fr-FR');
+    const methodLabel = order.payment_method ? PAYMENT_METHOD_LABELS[order.payment_method as PaymentMethod] : '—';
+    win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Recu ${order.order_number}</title>
+    <style>
+      *{margin:0;padding:0;box-sizing:border-box;font-family:'Courier New',monospace;}
+      body{padding:24px;color:#1e293b;font-size:13px;line-height:1.5;}
+      .header{text-align:center;border-bottom:2px solid #1e293b;padding-bottom:12px;margin-bottom:16px;}
+      .header h1{font-size:20px;font-weight:bold;}.header p{font-size:11px;color:#64748b;margin-top:2px;}
+      .info{margin-bottom:16px;}.info p{font-size:12px;margin:1px 0;}
+      .items{width:100%;margin-bottom:16px;border-collapse:collapse;}
+      .items th{text-align:left;font-size:11px;color:#64748b;border-bottom:1px solid #cbd5e1;padding:4px 0;}
+      .items td{font-size:12px;padding:3px 0;}.items .qty{width:30px;}.items .price{text-align:right;}
+      .totals{border-top:2px solid #1e293b;padding-top:8px;margin-top:8px;}
+      .totals p{display:flex;justify-content:space-between;font-size:12px;margin:2px 0;}
+      .totals .grand{font-size:16px;font-weight:bold;margin-top:6px;border-top:1px solid #cbd5e1;padding-top:6px;}
+      .footer{text-align:center;margin-top:24px;font-size:10px;color:#94a3b8;}
+      @media print{body{padding:8px;}}
+    </style></head><body>
+    <div class="header"><h1>Le Gourmet</h1><p>Recu de paiement</p></div>
+    <div class="info">
+      <p><strong>N° ${order.order_number}</strong></p>
+      <p>Date: ${dateStr}</p>
+      <p>Client: ${order.customer_name || '—'}</p>
+      <p>Telephone: ${order.customer_phone || '—'}</p>
+      ${order.table_number ? `<p>Table: ${order.table_number}</p>` : ''}
+      ${order.delivery_address ? `<p>Adresse: ${order.delivery_address}</p>` : ''}
+    </div>
+    <table class="items"><thead><tr><th class="qty">Qt.</th><th>Article</th><th class="price">Prix</th></tr></thead><tbody>
+    ${items.map((i: any) => `<tr><td class="qty">${i.quantity}</td><td>${i.dish_name}</td><td class="price">${formatPrice(i.subtotal)}</td></tr>`).join('')}
+    </tbody></table>
+    <div class="totals">
+      ${order.delivery_fee > 0 ? `<p><span>Livraison</span><span>${formatPrice(order.delivery_fee)}</span></p>` : ''}
+      <p class="grand"><span>TOTAL</span><span>${formatPrice(order.total_amount)}</span></p>
+      <p><span>Reglement</span><span>${methodLabel}</span></p>
+      <p><span>Statut</span><span>${order.payment_status === 'paye' ? 'Paye' : 'En attente'}</span></p>
+    </div>
+    <div class="footer"><p>Merci de votre visite !</p><p>Le Gourmet - Restaurant</p></div>
+    </body></html>`);
+    win.document.close();
+    win.focus();
+    setTimeout(() => win.print(), 300);
+  };
+
   return (
     <div className="px-4 pt-4">
       <div className="relative mb-6">
@@ -1258,6 +1306,13 @@ function TrackingPage() {
               <span className="font-bold text-orange-600">{formatPrice(order.total_amount)}</span>
             </div>
           </Card>
+
+          {/* Print receipt button */}
+          {order.payment_status === 'paye' && (
+            <Button variant="outline" className="w-full" onClick={printReceipt}>
+              <Printer size={16} className="mr-2" /> Imprimer le recu
+            </Button>
+          )}
 
           {/* Delivery info */}
           {order.type === 'livraison' && order.delivery?.[0] && (
