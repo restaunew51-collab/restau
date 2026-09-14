@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { ChefHat, ClipboardList, CalendarDays, LogOut, Search, Phone, MapPin, Bike, Utensils, Clock, Package, CircleCheck as CheckCircle2, X, Plus, Minus, Trash2, Eye, TrendingUp, Smartphone, Wallet, CreditCard, Banknote } from 'lucide-react';
+import { ChefHat, ClipboardList, CalendarDays, LogOut, Search, Phone, MapPin, Bike, Utensils, Clock, Package, CircleCheck as CheckCircle2, X, Plus, Minus, Trash2, Eye, TrendingUp, Smartphone, Wallet, CreditCard, Banknote, Printer, Ban } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { useDishes, createOrder } from '@/lib/hooks';
@@ -126,6 +126,8 @@ function OrdersManagement() {
   const [createPaymentMethod, setCreatePaymentMethod] = useState<PaymentMethod>('especes');
   const [creating, setCreating] = useState(false);
   const [createSuccess, setCreateSuccess] = useState<string | null>(null);
+  const [cancelModal, setCancelModal] = useState(false);
+  const [paymentSuccess, setPaymentSuccess] = useState<Order | null>(null);
 
   const { dishes, loading: dishesLoading } = useDishes();
 
@@ -240,7 +242,9 @@ function OrdersManagement() {
       .eq('id', orderId);
     fetchOrders();
     if (selectedOrder?.id === orderId) {
-      setSelectedOrder({ ...selectedOrder, payment_status: 'paye', payment_method: method, status: 'en_preparation' });
+      const updated = { ...selectedOrder, payment_status: 'paye' as const, payment_method: method, status: 'en_preparation' as const };
+      setSelectedOrder(updated);
+      setPaymentSuccess(updated);
     }
     setPaymentModal(false);
   };
@@ -259,6 +263,65 @@ function OrdersManagement() {
   const openDetail = (order: Order) => {
     setSelectedOrder(order);
     setDetailOpen(true);
+  };
+
+  const cancelOrder = async (orderId: string) => {
+    await supabase
+      .from('orders')
+      .update({ status: 'annule', updated_at: new Date().toISOString() })
+      .eq('id', orderId);
+    fetchOrders();
+    if (selectedOrder?.id === orderId) {
+      setSelectedOrder({ ...selectedOrder, status: 'annule' });
+    }
+    setCancelModal(false);
+  };
+
+  const printReceipt = (order: Order) => {
+    const win = window.open('', '_blank', 'width=400,height=600');
+    if (!win) return;
+    const items = order.order_items || [];
+    const dateStr = new Date(order.created_at).toLocaleString('fr-FR');
+    const methodLabel = order.payment_method ? PAYMENT_METHOD_LABELS[order.payment_method] : '—';
+    win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Recu ${order.order_number}</title>
+    <style>
+      *{margin:0;padding:0;box-sizing:border-box;font-family:'Courier New',monospace;}
+      body{padding:24px;color:#1e293b;font-size:13px;line-height:1.5;}
+      .header{text-align:center;border-bottom:2px solid #1e293b;padding-bottom:12px;margin-bottom:16px;}
+      .header h1{font-size:20px;font-weight:bold;}.header p{font-size:11px;color:#64748b;margin-top:2px;}
+      .info{margin-bottom:16px;}.info p{font-size:12px;margin:1px 0;}
+      .items{width:100%;margin-bottom:16px;border-collapse:collapse;}
+      .items th{text-align:left;font-size:11px;color:#64748b;border-bottom:1px solid #cbd5e1;padding:4px 0;}
+      .items td{font-size:12px;padding:3px 0;}.items .qty{width:30px;}.items .price{text-align:right;}
+      .totals{border-top:2px solid #1e293b;padding-top:8px;margin-top:8px;}
+      .totals p{display:flex;justify-content:space-between;font-size:12px;margin:2px 0;}
+      .totals .grand{font-size:16px;font-weight:bold;margin-top:6px;border-top:1px solid #cbd5e1;padding-top:6px;}
+      .footer{text-align:center;margin-top:24px;font-size:10px;color:#94a3b8;}
+      @media print{body{padding:8px;}}
+    </style></head><body>
+    <div class="header"><h1>Le Gourmet</h1><p>Recu de paiement</p></div>
+    <div class="info">
+      <p><strong>N° ${order.order_number}</strong></p>
+      <p>Date: ${dateStr}</p>
+      <p>Client: ${order.customer_name || '—'}</p>
+      <p>Telephone: ${order.customer_phone || '—'}</p>
+      ${order.table_number ? `<p>Table: ${order.table_number}</p>` : ''}
+      ${order.delivery_address ? `<p>Adresse: ${order.delivery_address}</p>` : ''}
+    </div>
+    <table class="items"><thead><tr><th class="qty">Qt.</th><th>Article</th><th class="price">Prix</th></tr></thead><tbody>
+    ${items.map((i: any) => `<tr><td class="qty">${i.quantity}</td><td>${i.dish_name}</td><td class="price">${formatPrice(i.subtotal)}</td></tr>`).join('')}
+    </tbody></table>
+    <div class="totals">
+      ${(order as any).delivery_fee > 0 ? `<p><span>Livraison</span><span>${formatPrice((order as any).delivery_fee)}</span></p>` : ''}
+      <p class="grand"><span>TOTAL</span><span>${formatPrice(order.total_amount)}</span></p>
+      <p><span>Reglement</span><span>${methodLabel}</span></p>
+      <p><span>Statut</span><span>Paye</span></p>
+    </div>
+    <div class="footer"><p>Merci de votre visite !</p><p>Le Gourmet - Restaurant</p></div>
+    </body></html>`);
+    win.document.close();
+    win.focus();
+    setTimeout(() => win.print(), 300);
   };
 
   const stats = {
@@ -512,6 +575,26 @@ function OrdersManagement() {
                       <Bike size={16} className="mr-1" /> Assigner un livreur
                     </Button>
                   )}
+                {selectedOrder.payment_status === 'paye' &&
+                  selectedOrder.status !== 'annule' && (
+                    <Button
+                      variant="outline"
+                      onClick={() => printReceipt(selectedOrder)}
+                    >
+                      <Printer size={16} className="mr-1" /> Imprimer le reçu
+                    </Button>
+                  )}
+                {selectedOrder.status !== 'annule' &&
+                  selectedOrder.status !== 'en_livraison' &&
+                  selectedOrder.status !== 'livre' &&
+                  selectedOrder.status !== 'recupere' && (
+                    <Button
+                      variant="danger"
+                      onClick={() => setCancelModal(true)}
+                    >
+                      <Ban size={16} className="mr-1" /> Annuler
+                    </Button>
+                  )}
               </div>
 
               {(selectedOrder.status === 'livre' ||
@@ -605,6 +688,57 @@ function OrdersManagement() {
             ))
           )}
         </div>
+      </Modal>
+
+      {/* Cancel Confirmation Modal */}
+      <Modal open={cancelModal} onClose={() => setCancelModal(false)} title="Annuler la commande" size="sm">
+        {selectedOrder && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-red-50 border border-red-200">
+              <Ban size={20} className="text-red-600 flex-shrink-0" />
+              <p className="text-sm text-red-700">
+                Confirmer l'annulation de la commande <strong>{selectedOrder.order_number}</strong> ?
+                {selectedOrder.payment_status === 'paye' && ' Le montant encaissé sera retiré des revenus.'}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => setCancelModal(false)}>
+                Retour
+              </Button>
+              <Button variant="danger" className="flex-1" onClick={() => cancelOrder(selectedOrder.id)}>
+                <Ban size={16} className="mr-1" /> Confirmer
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Payment Success Modal */}
+      <Modal open={!!paymentSuccess} onClose={() => setPaymentSuccess(null)} title="Paiement encaissé" size="sm">
+        {paymentSuccess && (
+          <div className="space-y-4">
+            <div className="flex flex-col items-center text-center py-4">
+              <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mb-3">
+                <CheckCircle2 size={32} className="text-green-600" />
+              </div>
+              <h3 className="font-bold text-slate-900">Paiement confirmé</h3>
+              <p className="text-3xl font-bold text-slate-900 mt-2">{formatPrice(paymentSuccess.total_amount)}</p>
+              <p className="text-sm text-slate-500 mt-1">Commande {paymentSuccess.order_number}</p>
+              <p className="text-xs text-slate-400 mt-1">
+                {paymentSuccess.payment_method ? PAYMENT_METHOD_LABELS[paymentSuccess.payment_method] : '—'}
+              </p>
+            </div>
+            <Button
+              className="w-full"
+              onClick={() => printReceipt(paymentSuccess)}
+            >
+              <Printer size={16} className="mr-1" /> Imprimer le reçu
+            </Button>
+            <Button variant="outline" className="w-full" onClick={() => setPaymentSuccess(null)}>
+              Fermer
+            </Button>
+          </div>
+        )}
       </Modal>
 
       {/* Create Order Modal */}

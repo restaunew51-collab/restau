@@ -152,9 +152,9 @@ function Dashboard() {
       const yearStart = new Date(new Date().getFullYear(), 0, 1).toISOString();
 
       const [todayRes, monthRes, yearRes, todayOrdersRes, deliveriesRes, clientsRes, reservationsRes, activeUsersRes, recentRes] = await Promise.all([
-        supabase.from('orders').select('total_amount').gte('created_at', today).eq('payment_status', 'paye'),
-        supabase.from('orders').select('total_amount').gte('created_at', monthStart).eq('payment_status', 'paye'),
-        supabase.from('orders').select('total_amount').gte('created_at', yearStart).eq('payment_status', 'paye'),
+        supabase.from('orders').select('total_amount').gte('created_at', today).eq('payment_status', 'paye').neq('status', 'annule'),
+        supabase.from('orders').select('total_amount').gte('created_at', monthStart).eq('payment_status', 'paye').neq('status', 'annule'),
+        supabase.from('orders').select('total_amount').gte('created_at', yearStart).eq('payment_status', 'paye').neq('status', 'annule'),
         supabase.from('orders').select('*').gte('created_at', today),
         supabase.from('deliveries').select('*').in('status', ['assigne', 'en_cours']),
         supabase.from('profiles').select('*').eq('role', 'client'),
@@ -928,7 +928,7 @@ function AdminReports() {
         .gte('created_at', startDate)
         .order('created_at', { ascending: false });
 
-      const allOrders = (orders as Order[]) || [];
+      const allOrders = ((orders as Order[]) || []).filter((o) => o.status !== 'annule');
       const paidOrders = allOrders.filter((o) => o.payment_status === 'paye');
       const totalRevenue = paidOrders.reduce((s, o) => s + Number(o.total_amount), 0);
       const deliveryOrders = allOrders.filter((o) => o.type === 'livraison').length;
