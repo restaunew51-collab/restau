@@ -11,7 +11,7 @@ export type OrderStatus =
   | 'pret'
   | 'en_livraison'
   | 'livre'
-  | 'paye'
+  | 'recupere'
   | 'annule';
 
 export type PaymentMethod = 'wave' | 'orange_money' | 'carte' | 'especes';

@@ -16,7 +16,7 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   pret: 'Prêt',
   en_livraison: 'En livraison',
   livre: 'Livré',
-  paye: 'Payé',
+  recupere: 'Récupéré',
   annule: 'Annulé',
 };
 
@@ -26,7 +26,7 @@ export const ORDER_STATUS_COLORS: Record<OrderStatus, string> = {
   pret: 'bg-cyan-100 text-cyan-700 border-cyan-200',
   en_livraison: 'bg-purple-100 text-purple-700 border-purple-200',
   livre: 'bg-green-100 text-green-700 border-green-200',
-  paye: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+  recupere: 'bg-emerald-100 text-emerald-700 border-emerald-200',
   annule: 'bg-red-100 text-red-700 border-red-200',
 };
 
@@ -126,12 +126,19 @@ export const STATUS_COLORS: Record<UserStatus, string> = {
   suspended: 'bg-red-100 text-red-700 border-red-200',
 };
 
-export const ORDER_STATUS_FLOW: OrderStatus[] = [
+export const ORDER_STATUS_FLOW_DELIVERY: OrderStatus[] = [
   'en_attente',
   'en_preparation',
   'pret',
   'en_livraison',
   'livre',
+];
+
+export const ORDER_STATUS_FLOW_ONSITE: OrderStatus[] = [
+  'en_attente',
+  'en_preparation',
+  'pret',
+  'recupere',
 ];
 
 export const formatPrice = (price: number): string => {

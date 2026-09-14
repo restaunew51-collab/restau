@@ -1,28 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import {
-  ChefHat,
-  ClipboardList,
-  CalendarDays,
-  LogOut,
-  Search,
-  Phone,
-  MapPin,
-  Bike,
-  Utensils,
-  Clock,
-  Package,
-  CheckCircle2,
-  X,
-  Plus,
-  Minus,
-  Trash2,
-  Eye,
-  TrendingUp,
-  Smartphone,
-  Wallet,
-  CreditCard,
-  Banknote,
-} from 'lucide-react';
+import { ChefHat, ClipboardList, CalendarDays, LogOut, Search, Phone, MapPin, Bike, Utensils, Clock, Package, CircleCheck as CheckCircle2, X, Plus, Minus, Trash2, Eye, TrendingUp, Smartphone, Wallet, CreditCard, Banknote } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { useDishes, createOrder } from '@/lib/hooks';
@@ -189,7 +166,7 @@ function OrdersManagement() {
       items: createCart,
     });
     setCreating(false);
-    if (error) return;
+    if (error || !order) return;
     if (createPaymentMethod !== 'especes') {
       await supabase.from('orders').update({ payment_status: 'paye', status: 'en_preparation' }).eq('id', order.id);
     }
@@ -481,37 +458,16 @@ function OrdersManagement() {
 
             {/* Actions */}
             <div className="border-t border-slate-200 pt-4 space-y-3">
-              <div>
-                <p className="text-sm font-medium text-slate-700 mb-2">Statut de la commande</p>
-                <div className="flex flex-wrap gap-2">
-                  {Object.entries(ORDER_STATUS_LABELS).map(([k, v]) => {
-                    const isLocked = k === 'en_livraison' || k === 'livre';
-                    const isCurrent = selectedOrder.status === k;
-                    return (
-                      <button
-                        key={k}
-                        onClick={() => !isLocked && updateOrderStatus(selectedOrder.id, k)}
-                        disabled={isLocked}
-                        className={cn(
-                          'px-3 py-1.5 rounded-lg text-xs font-medium border transition-all',
-                          isCurrent
-                            ? 'bg-slate-800 text-white border-slate-800'
-                            : isLocked
-                              ? 'border-slate-100 text-slate-300 cursor-not-allowed'
-                              : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-                        )}
-                      >
-                        {v}
-                      </button>
-                    );
-                  })}
-                </div>
-                <p className="text-xs text-slate-400 mt-2">
-                  Les statuts "En livraison" et "Livré" sont gérés automatiquement par l'assignation du livreur.
-                </p>
+              <div className="flex flex-wrap gap-2">
+                <Badge className={ORDER_STATUS_COLORS[selectedOrder.status]}>
+                  {ORDER_STATUS_LABELS[selectedOrder.status]}
+                </Badge>
+                <Badge className={PAYMENT_STATUS_COLORS[selectedOrder.payment_status]}>
+                  {PAYMENT_STATUS_LABELS[selectedOrder.payment_status]}
+                </Badge>
               </div>
 
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 {selectedOrder.payment_status === 'en_attente' && (
                   <Button
                     variant="success"
@@ -524,6 +480,25 @@ function OrdersManagement() {
                     <CheckCircle2 size={16} className="mr-1" /> Encaisser
                   </Button>
                 )}
+                {selectedOrder.payment_status === 'paye' &&
+                  selectedOrder.status === 'en_preparation' && (
+                    <Button
+                      onClick={() => updateOrderStatus(selectedOrder.id, 'pret')}
+                      className="flex-1"
+                    >
+                      <Package size={16} className="mr-1" /> Marquer prêt
+                    </Button>
+                  )}
+                {selectedOrder.type === 'sur_place' &&
+                  selectedOrder.status === 'pret' && (
+                    <Button
+                      variant="success"
+                      onClick={() => updateOrderStatus(selectedOrder.id, 'recupere')}
+                      className="flex-1"
+                    >
+                      <CheckCircle2 size={16} className="mr-1" /> Marquer récupéré
+                    </Button>
+                  )}
                 {selectedOrder.type === 'livraison' &&
                   selectedOrder.status === 'pret' &&
                   selectedOrder.payment_status === 'paye' && (
@@ -538,6 +513,16 @@ function OrdersManagement() {
                     </Button>
                   )}
               </div>
+
+              {(selectedOrder.status === 'livre' ||
+                selectedOrder.status === 'recupere' ||
+                selectedOrder.status === 'en_livraison') && (
+                <p className="text-xs text-slate-400 text-center">
+                  {selectedOrder.status === 'en_livraison'
+                    ? 'Commande en cours de livraison par le livreur.'
+                    : 'Cycle de la commande terminé.'}
+                </p>
+              )}
             </div>
           </div>
         )}

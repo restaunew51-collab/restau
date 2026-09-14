@@ -1,32 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import {
-  ChefHat,
-  Home,
-  Utensils,
-  Search,
-  ShoppingCart,
-  CalendarPlus,
-  User,
-  Clock,
-  MapPin,
-  Phone,
-  Package,
-  CheckCircle2,
-  X,
-  Plus,
-  Minus,
-  Trash2,
-  ArrowRight,
-  Bike,
-  Info,
-  CreditCard,
-  Wallet,
-  Smartphone,
-  Navigation,
-  Loader2,
-  LocateFixed,
-  Banknote,
-} from 'lucide-react';
+import { ChefHat, Chrome as Home, Utensils, Search, ShoppingCart, CalendarPlus, User, Clock, MapPin, Phone, Package, CircleCheck as CheckCircle2, X, Plus, Minus, Trash2, ArrowRight, Bike, Info, CreditCard, Wallet, Smartphone, Navigation, Loader as Loader2, LocateFixed, Banknote } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useDailyMenu, useDishes, createOrder, fetchOrderByNumber, createReservation } from '@/lib/hooks';
 import {
@@ -1139,7 +1112,9 @@ function TrackingPage() {
     }
   };
 
-  const statusSteps = ['en_attente', 'en_preparation', 'pret', 'en_livraison', 'livre'];
+  const statusSteps = order?.type === 'livraison'
+    ? ['en_attente', 'en_preparation', 'pret', 'en_livraison', 'livre']
+    : ['en_attente', 'en_preparation', 'pret', 'recupere'];
   const currentStep = order ? statusSteps.indexOf(order.status) : -1;
 
   return (
@@ -1220,6 +1195,7 @@ function TrackingPage() {
                   pret: <Package size={16} />,
                   en_livraison: <Bike size={16} />,
                   livre: <CheckCircle2 size={16} />,
+                  recupere: <CheckCircle2 size={16} />,
                 };
                 return (
                   <div key={step} className="flex items-center gap-3">
